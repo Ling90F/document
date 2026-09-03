@@ -30,6 +30,7 @@ ooxml/tracked_changes.md
 ooxml/hyperlinks_and_fields.md
 troubleshooting/libreoffice_headless.md
 troubleshooting/run_splitting.md
+references/deliverable_content.md
 references/design_presets.md
 references/header_templates.md
 examples/end_to_end_smoke_test.md
