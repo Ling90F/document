@@ -1,60 +1,77 @@
 # Task: Read / review an existing DOCX
 
-## What to review
-- Layout: page breaks, margins, clipping/overlap
-- Typography: heading hierarchy, font consistency, line spacing
-- Tables/figures: alignment, legibility, truncation
-- Redlines: do tracked insertions/deletions show up?
-- Comments: do they exist (structurally), even if they don’t render?
+Use this task guide for READ_ONLY work and for explicit VISUAL_REVIEW work. Do not assume that every read/review request requires rendering.
 
-## Primary method: DOCX → PNG(s) (internally via PDF)
+## 1. Content-only READ_ONLY workflow
 
-### Preferred: use the packaged renderer
-This is the “golden path” because it handles the container-safe LibreOffice profile + HOME automatically and normalizes output names to `page-<N>.png`.
+Use this path when the user only wants to read, understand, summarize, extract, compare substantive content, answer questions, or use the document as context/reference.
+
+Default behavior:
+
+- Do not run `mark_artifact_operation_started.mjs`.
+- Do not run `render_docx.py`.
+- Do not generate page PNGs.
+- Do not inspect typography, spacing, pagination, table geometry, style consistency, accessibility, or other visual/layout properties.
+- Do not modify, normalize, sanitize, re-export, or otherwise mutate the source document.
+- Read only the relevant content needed to answer the user's request.
+
+Render or inspect page images only when either:
+
+1. the user explicitly asks about visual layout, formatting, page breaks, tables, images, typography, clipping, headers/footers, or appearance; or
+2. extracted/parsed content is missing, garbled, ambiguous, or insufficient to answer reliably.
+
+A request such as "read this", "look at this document", "summarize it", "tell me what it says", or "use this as reference" is content-only READ_ONLY unless the user asks for visual review or document mutation.
+
+## 2. VISUAL_REVIEW workflow
+
+Use this path only when visual inspection is actually required.
+
+### What to review
+
+Depending on the user's question, inspect:
+
+- layout: page breaks, margins, clipping, overlap, excessive whitespace;
+- typography: heading hierarchy, font consistency, line spacing;
+- tables/figures: alignment, legibility, truncation, wrapping;
+- headers/footers and page furniture;
+- tracked changes: whether insertions/deletions display as expected;
+- comments: whether they exist structurally, even if they do not render.
+
+### Preferred renderer
 
 ```bash
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out
-# If debugging LibreOffice:
+```
+
+For debugging:
+
+```bash
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out --verbose
-# Optional: also write <input_stem>.pdf to --output_dir (for debugging/archival):
+```
+
+Optional PDF output:
+
+```bash
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out --emit_pdf
 ```
 
-### Manual method (only if debugging)
-Use a unique LibreOffice profile + writable HOME (containers are prone to profile permission/locking issues):
+### Visual-review success criteria
 
-```bash
-OUTDIR=/mnt/data/out
-INPUT=/mnt/data/input.docx
-BASENAME=$(basename "$INPUT" .docx)
-LO_PROFILE=/mnt/data/.lo_profile_${BASENAME}_$$
-mkdir -p "$OUTDIR" "$LO_PROFILE"
-
-HOME="$LO_PROFILE" soffice --headless -env:UserInstallation=file://"$LO_PROFILE" \
-  --convert-to pdf --outdir "$OUTDIR" "$INPUT"
-
-# Manual naming: produces "$OUTDIR/$BASENAME-1.png", "$OUTDIR/$BASENAME-2.png", ...
-pdftoppm -png "$OUTDIR/$BASENAME.pdf" "$OUTDIR/$BASENAME"
-```
-
-### Success criteria
-- Page images exist for each page
-- Spot-check page count and representative pages
-
-**Note:** LibreOffice sometimes prints scary-looking stderr (e.g., `error : Unknown IO error`) even when output is correct. Prefer file existence + visual inspection over stderr content.
-
-### Visually inspect every page
-Focus on:
-- clipped/overlapping text
-- tables that wrap unexpectedly
-- inconsistent fonts/sizes
-- misplaced headers/footers
+- required page images exist;
+- page count is plausible;
+- inspect the pages needed to answer the user's visual question;
+- for final QA of an authored/edited deliverable, follow `tasks/verify_render.md` and inspect every final page;
+- report findings without changing the source unless the user explicitly requests fixes.
 
 ## Notes on redlines vs comments
-- **Tracked changes** (insertions/deletions) often show up in PDF renders.
-- **Comments frequently do NOT show up in PDF/image renders** (especially via headless LibreOffice).
-  - Rendering is not proof of comments.
-  - To verify comments, do a structural check (see `ooxml/comments.md`) or use `pandoc --track-changes=all` to confirm comment markup is present.
 
-## If the doc is huge
-Render and inspect key pages first (title, TOC, sections with tables, appendices), then spot-check.
+- Tracked insertions/deletions often appear in rendered PDF/page images.
+- Comments frequently do not render in headless LibreOffice output.
+- Rendering is therefore not proof that comments exist.
+- When comments matter, perform a structural check using `ooxml/comments.md` or the bundled comment helpers.
+
+## Large documents
+
+For content-only READ_ONLY work, read only the sections necessary to answer the question.
+
+For explicit VISUAL_REVIEW of a large document, inspect the pages relevant to the user's question first. For final delivery QA of a newly created or edited DOCX, follow the stricter authoring render gate in `SKILL.md` and `tasks/verify_render.md`.
