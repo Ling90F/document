@@ -1,43 +1,29 @@
-# Task: Read / review an existing DOCX
+# Task: Read or visually review an existing DOCX
 
-Use this task guide for READ_ONLY work and for explicit VISUAL_REVIEW work. Do not assume that every read/review request requires rendering.
+Use the task mode selected in `SKILL.md`. Reading content and reviewing layout are separate paths.
 
-## 1. Content-only READ_ONLY workflow
+## 1. Content-only READ_ONLY
 
-Use this path when the user only wants to read, understand, summarize, extract, compare substantive content, answer questions, or use the document as context/reference.
+Use this path for summarizing, extracting, comparing substantive content, answering questions, or using a document as reference.
 
-Default behavior:
+- Read only the content needed for the request.
+- Do not run the artifact-operation marker.
+- Do not modify, normalize, sanitize, or re-export the source.
+- Do not render or inspect layout unless visual information is required.
 
-- Do not run `mark_artifact_operation_started.mjs`.
-- Do not run `render_docx.py`.
-- Do not generate page PNGs.
-- Do not inspect typography, spacing, pagination, table geometry, style consistency, accessibility, or other visual/layout properties.
-- Do not modify, normalize, sanitize, re-export, or otherwise mutate the source document.
-- Read only the relevant content needed to answer the user's request.
+Render only when the user asks about visual characteristics or parsed content is incomplete, garbled, or ambiguous.
 
-Render or inspect page images only when either:
+## 2. VISUAL_REVIEW
 
-1. the user explicitly asks about visual layout, formatting, page breaks, tables, images, typography, clipping, headers/footers, or appearance; or
-2. extracted/parsed content is missing, garbled, ambiguous, or insufficient to answer reliably.
+Use this path for questions about:
 
-A request such as "read this", "look at this document", "summarize it", "tell me what it says", or "use this as reference" is content-only READ_ONLY unless the user asks for visual review or document mutation.
+- page breaks, margins, clipping, overlap, or excessive whitespace;
+- typography, hierarchy, font consistency, or line spacing;
+- tables, figures, images, wrapping, or truncation;
+- headers, footers, and page furniture;
+- tracked changes or comments.
 
-## 2. VISUAL_REVIEW workflow
-
-Use this path only when visual inspection is actually required.
-
-### What to review
-
-Depending on the user's question, inspect:
-
-- layout: page breaks, margins, clipping, overlap, excessive whitespace;
-- typography: heading hierarchy, font consistency, line spacing;
-- tables/figures: alignment, legibility, truncation, wrapping;
-- headers/footers and page furniture;
-- tracked changes: whether insertions/deletions display as expected;
-- comments: whether they exist structurally, even if they do not render.
-
-### Preferred renderer
+Render with:
 
 ```bash
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out
@@ -49,29 +35,18 @@ For debugging:
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out --verbose
 ```
 
-Optional PDF output:
+For optional PDF output:
 
 ```bash
 python render_docx.py /mnt/data/input.docx --output_dir /mnt/data/out --emit_pdf
 ```
 
-### Visual-review success criteria
+Inspect the pages needed to answer the visual question. Report findings without changing the source unless the user requests fixes.
 
-- required page images exist;
-- page count is plausible;
-- inspect the pages needed to answer the user's visual question;
-- for final QA of an authored/edited deliverable, follow `tasks/verify_render.md` and inspect every final page;
-- report findings without changing the source unless the user explicitly requests fixes.
+For final QA of a newly created or edited document, use the stricter all-pages gate in `SKILL.md` and `tasks/verify_render.md`.
 
-## Notes on redlines vs comments
+## 3. Tracked changes and comments
 
-- Tracked insertions/deletions often appear in rendered PDF/page images.
-- Comments frequently do not render in headless LibreOffice output.
-- Rendering is therefore not proof that comments exist.
-- When comments matter, perform a structural check using `ooxml/comments.md` or the bundled comment helpers.
+Tracked insertions and deletions often appear in page renders. Comments often do not.
 
-## Large documents
-
-For content-only READ_ONLY work, read only the sections necessary to answer the question.
-
-For explicit VISUAL_REVIEW of a large document, inspect the pages relevant to the user's question first. For final delivery QA of a newly created or edited DOCX, follow the stricter authoring render gate in `SKILL.md` and `tasks/verify_render.md`.
+When comments matter, verify `comments.xml`, anchors, relationships, and content types, or use the bundled comment helpers. A clean render does not prove that comments exist.

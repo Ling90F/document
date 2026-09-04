@@ -1,51 +1,43 @@
-# Task: Create / edit a DOCX
+# Task: Create or edit a DOCX
 
-Use this guide for CREATE and EDIT authoring tasks.
+Use this guide for CREATE and EDIT authoring tasks. Follow the mode, runtime, template, Google Docs, and render requirements in `SKILL.md`.
 
-Before writing substantive artifact content, read and follow:
+Before writing or rewriting substantive content, read:
 
 `references/deliverable_content.md`
 
-The document must read as a standalone real-world deliverable, not as a transcript of the assistant-user conversation or a record of the production process.
-
-## 1. Authoring mode requirements
+## 1. Define the authoring scope
 
 ### CREATE
 
-For a new document:
-
-- determine the real document purpose and audience;
-- select/follow the applicable template or design preset;
-- write only content that belongs in the finished artifact;
-- do not add assistant-style framing, work summaries, generic introductions, generic conclusions, QA notes, tool details, or next-step suggestions unless the requested document type genuinely requires them;
-- do not invent missing facts merely to make the document appear complete.
+Determine the real purpose, audience, required content, and delivery format. Use the applicable template or design preset.
 
 ### EDIT
 
-For an existing document:
+Read the source and the requested change scope before editing.
 
-- preserve the established voice, structure, terminology, and design unless broader change is explicitly requested;
-- prefer minimal local edits over rewriting entire sections;
-- apply `references/deliverable_content.md` primarily to newly inserted or rewritten text;
-- do not rewrite compliant existing prose merely to impose a generic style;
-- do not expand a narrow edit request into a broader rewrite.
+- Preserve the established structure, terminology, voice, and design.
+- Prefer local replacements to broad rewrites.
+- Do not change compliant content outside the requested scope.
+- Use comments or tracked changes only when requested or required by the task.
 
-## 2. Default tool: python-docx
+## 2. Authoring tool
 
-Use `python-docx` for:
+Use `python-docx` for ordinary document construction and edits:
 
 - paragraphs and runs;
-- Word paragraph styles;
-- tables and cell text;
-- headers/footers;
-- margins and page setup;
-- ordinary document structure.
+- paragraph styles;
+- tables and cell content;
+- headers and footers;
+- margins, sections, and page setup.
 
-For Google Docs-targeted output, do not use Word's built-in `Title` paragraph style. Build the title as a plain paragraph with explicit formatting, then run `scripts/google_docs_title_sanitize.py` before render/import.
+Use bundled OOXML helpers when `python-docx` does not support the required feature, especially for tracked changes, comments, fields, relationships, or deterministic low-level edits.
 
-## 3. Practical python-docx gotchas
+For Google Docs-targeted output, build the title as a plain paragraph with explicit formatting. Do not use Word's built-in `Title` style. Run `scripts/google_docs_title_sanitize.py` before render/import.
 
-### Header/footer tables require a width
+## 3. Common implementation details
+
+### Header/footer tables require an explicit width
 
 ```python
 from docx.shared import Inches
@@ -57,7 +49,9 @@ table = footer.add_table(rows=1, cols=3, width=Inches(6.5))
 table.rows[0].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
 ```
 
-### Fonts can require both `run.font.name` and `w:rFonts`
+### Set Word font mappings when required
+
+Some renderers need both `run.font.name` and `w:rFonts`:
 
 ```python
 from docx.oxml.ns import qn
@@ -69,47 +63,40 @@ run._element.rPr.rFonts.set(qn("w:hAnsi"), "Gill Sans")
 
 ### Replacing header content
 
-Do not assume an existing header paragraph supports a simple `clear()` call. Remove runs or replace the paragraph XML when needed.
+Do not assume an existing header paragraph has a reliable `clear()` method. Remove runs or replace the paragraph XML when needed.
 
-### Tracked changes and comments
+## 4. Content gate
 
-Real tracked changes and Word comments are not first-class in `python-docx`. Use the bundled OOXML helpers under `ooxml/` and `scripts/` when required.
+Before render QA, run the content audit and compression pass in `references/deliverable_content.md`.
 
-## 4. Deliverable Content Audit
+The final text must:
 
-Before rendering the final CREATE/EDIT result, run the content audit defined in `references/deliverable_content.md`.
+- contain only material that belongs in the standalone deliverable;
+- use no more explanation than the reader needs;
+- state concrete mechanics, conditions, parameters, and measured results instead of inferred benefits;
+- avoid sentences that bundle conclusion, reason, benefit, attitude, and recommendation;
+- remove repeated framing, rationale, summaries, and unsupported evaluative wording;
+- preserve unknown facts as placeholders or document-native uncertainty rather than inventing them.
 
-At minimum, check for:
+Do not proceed to visual QA until the content passes.
 
-- chat leakage;
-- process/QA/tool commentary inside the artifact;
-- assistant-style framing such as "Based on your request..." or semantic equivalents in the document's language;
-- generic introductions or conclusions added only for completeness;
-- audience mismatch;
-- unsupported claims;
-- poor handling of unknown/unconfirmed facts;
-- sentences that fail the standalone-document test.
+## 5. Render and verify
 
-Remove or rewrite anything that fails before visual QA.
-
-## 5. Render and visual QA
-
-After every meaningful authoring batch, use the loop from `tasks/verify_render.md`.
+After each meaningful authoring batch, follow `tasks/verify_render.md`.
 
 For final delivery:
 
-1. finish substantive authoring;
-2. run the Deliverable Content Audit;
-3. render the DOCX to page PNGs;
-4. inspect every final page at 100% zoom;
-5. fix layout defects;
-6. re-render after any layout-sensitive or OOXML change;
-7. deliver only after the latest render is clean.
+1. finish the content pass;
+2. render the DOCX to page PNGs;
+3. inspect every page at 100% zoom;
+4. fix layout defects;
+5. re-render after layout-sensitive or OOXML changes;
+6. deliver only after the latest render is clean.
 
-If LibreOffice/`soffice` is unavailable, follow the structural fallback described in `SKILL.md` and disclose that visual QA could not be completed.
+If LibreOffice/`soffice` is unavailable, use the structural fallback in `SKILL.md` and disclose that visual QA was not completed.
 
 ## 6. Output hygiene
 
-Keep `/mnt/data` clean: final deliverables only unless the user explicitly requests intermediate renders or debug artifacts.
+Keep final deliverables separate from temporary builders, page renders, and debug artifacts.
 
-Keep assistant explanations about what changed, why it changed, and what was checked in the final chat response rather than inserting them into the document itself.
+Put change summaries, implementation explanations, QA status, and next-step suggestions in the chat response, not in the document, unless the requested artifact explicitly calls for them.
